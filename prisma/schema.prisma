@@ -1,0 +1,214 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+/**
+ * Prisma Client Generator Configuration
+ * Generates the Prisma client for database operations
+ */
+generator client {
+  provider = "prisma-client-js"
+}
+
+/**
+ * Database Configuration
+ * PostgreSQL database connection settings
+ */
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// --------------------
+// Enums
+// --------------------
+
+/**
+ * User Role Enumeration
+ * Defines the available user roles in the system
+ */
+enum UserRole {
+  USER  // Regular user with basic permissions
+  ADMIN // Administrator with full system access
+}
+
+/**
+ * Order Status Enumeration
+ * Defines the available statuses for orders
+ */
+enum OrderStatus {
+  PENDING    // Order created, waiting for payment
+  PROCESSING // Payment received, processing order
+  COMPLETED  // Order completed, account delivered
+  CANCELLED  // Order cancelled
+  REFUNDED   // Order refunded
+}
+
+/**
+ * Payment Status Enumeration  
+ * Defines the available payment statuses
+ */
+enum PaymentStatus {
+  PENDING   // Payment initiated, waiting for completion
+  SUCCESS   // Payment completed successfully
+  FAILED    // Payment failed
+  CANCELLED // Payment cancelled by user
+  REFUNDED  // Payment refunded
+}
+
+/**
+ * Payment Method Enumeration
+ * Defines supported payment methods
+ */
+enum PaymentMethod {
+  VNPAY     // VNPay gateway
+  ZALOPAY   // ZaloPay gateway  
+  BANK      // Direct bank transfer
+  MOMO      // MoMo wallet
+}
+
+// --------------------
+// Models
+// --------------------
+
+/**
+ * User Model
+ * Represents a user in the system with authentication and authorization
+ */
+model User {
+  id                String    @id @default(cuid()) // Unique user identifier
+  email             String    @unique              // User's email address (unique)
+  passwordHash      String                         // Hashed password for security
+  name              String?                        // Optional user display name
+  role              UserRole  @default(USER)       // User role (USER or ADMIN)
+  emailVerifiedAt   DateTime?                      // Email verification timestamp
+  twoFactorEnabled  Boolean   @default(false)      // Two-factor authentication status
+  createdAt         DateTime  @default(now())      // Account creation timestamp
+  updatedAt         DateTime  @updatedAt           // Last update timestamp
+
+  // Relations
+  auditLogs         AuditLog[] // One-to-many relationship with audit logs
+  orders            Order[]    // One-to-many relationship with orders
+}
+
+/**
+ * AccountForSale Model
+ * Represents a game account available for sale with detailed metadata
+ */
+model AccountForSale {
+  id          String   @id @default(cuid()) // Unique account identifier
+  rank        String?                       // Game rank (Diamond, Master, etc.)
+  price       Int                           // Account price in VND
+  heroesCount Int                           // Number of heroes owned
+  skinsCount  Int                           // Number of skins owned
+  status      String   @default("available") // Account availability status
+  description String?                       // Optional account description
+  images      String[]                      // Array of image URLs for the account
+  
+  // Additional metadata fields - important for querying and filtering
+  level       Int?  // Account level (V, VI, VII, etc.)
+  matches     Int?     // Total number of matches played
+  winRate     Float?   // Win rate percentage (0-100)
+  reputation  Int?     // Account reputation score (0-100)
+  
+  // Character skins data - stored as JSON for flexibility
+  characterSkins Json?  // JSON object containing array of character skins
+  
+  // Account credentials (encrypted)
+  gameUsername String?  // Game account username
+  gamePassword String?  // Game account password (encrypted)
+  loginMethod  String?  // Login method (Facebook, Google, Game Center, etc.)
+  additionalInfo String? // Additional account information
+  
+  createdAt   DateTime @default(now()) // Account creation timestamp
+  updatedAt   DateTime @updatedAt      // Last update timestamp
+
+  // Relations
+  orders      Order[]  // One-to-many relationship with orders
+}
+
+/**
+ * Order Model
+ * Represents a purchase order for a game account
+ */
+model Order {
+  id              String        @id @default(cuid()) // Unique order identifier
+  orderNumber     String        @unique              // Human-readable order number
+  userId          String                             // ID of the buyer
+  accountId       String                             // ID of the account being purchased
+  amount          Int                                // Order amount in VND
+  status          OrderStatus   @default(PENDING)    // Order status
+  customerEmail   String                             // Customer email for delivery
+  customerName    String                             // Customer name
+  deliveredAt     DateTime?                          // Account delivery timestamp
+  deliveryMethod  String        @default("email")    // How account info is delivered
+  notes           String?                            // Additional order notes
+  createdAt       DateTime      @default(now())      // Order creation timestamp
+  updatedAt       DateTime      @updatedAt           // Last update timestamp
+
+  // Relations
+  user            User          @relation(fields: [userId], references: [id])
+  account         AccountForSale @relation(fields: [accountId], references: [id])
+  payments        Payment[]     // One-to-many relationship with payments
+}
+
+/**
+ * Payment Model  
+ * Represents a payment transaction for an order
+ */
+model Payment {
+  id                String        @id @default(cuid()) // Unique payment identifier
+  orderId           String                             // Associated order ID
+  amount            Int                                // Payment amount in VND
+  method            PaymentMethod                      // Payment method used
+  status            PaymentStatus @default(PENDING)    // Payment status
+  gatewayTransactionId String?                         // Transaction ID from payment gateway
+  gatewayResponse   Json?                              // Full response from payment gateway
+  paidAt            DateTime?                          // Payment completion timestamp
+  failureReason     String?                            // Reason for payment failure
+  refundedAt        DateTime?                          // Refund timestamp
+  refundAmount      Int?                               // Refunded amount
+  createdAt         DateTime      @default(now())      // Payment creation timestamp
+  updatedAt         DateTime      @updatedAt           // Last update timestamp
+
+  // Relations
+  order             Order         @relation(fields: [orderId], references: [id])
+}
+
+/**
+ * Notification Model
+ * Tracks email notifications sent to customers
+ */
+model Notification {
+  id          String   @id @default(cuid()) // Unique notification identifier
+  orderId     String?                       // Associated order ID (optional)
+  type        String                        // Notification type (order_confirmation, account_delivery, etc.)
+  recipient   String                        // Recipient email address
+  subject     String                        // Email subject
+  content     String                        // Email content
+  sentAt      DateTime?                     // When notification was sent
+  status      String   @default("pending")  // Notification status (pending, sent, failed)
+  attempts    Int      @default(0)          // Number of send attempts
+  createdAt   DateTime @default(now())      // Notification creation timestamp
+  updatedAt   DateTime @updatedAt           // Last update timestamp
+}
+
+/**
+ * AuditLog Model
+ * Tracks system activities and changes for security and compliance
+ */
+model AuditLog {
+  id         String   @id @default(cuid()) // Unique log identifier
+  userId     String?                        // ID of user who performed the action
+  action     String                         // Action performed (CREATE, UPDATE, DELETE, etc.)
+  entityType String                         // Type of entity affected (User, Account, etc.)
+  entityId   String                         // ID of the affected entity
+  meta       Json?                          // Additional metadata about the action
+  createdAt  DateTime @default(now())       // Log creation timestamp
+
+  // Relations
+  user       User?    @relation(fields: [userId], references: [id]) // Optional user relation
+}
