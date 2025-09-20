@@ -35,7 +35,7 @@ export default function VNPayReturnPage() {
             message: 'Thanh toán thất bại hoặc bị hủy',
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
         setPaymentResult({
           success: false,
           message: 'Có lỗi xảy ra khi xác thực thanh toán',

@@ -11,6 +11,12 @@ type Props = {
   onClick?: () => void;
 };
 
+type FormValues = {
+  customerName: string;
+  customerEmail: string;
+  paymentMethod: string;
+};
+
 export default function PurchaseButton({ accountId, price, onClick }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,7 +44,7 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
     }
   };
 
-  const handleSubmit = async (values: Record<string, any>) => {
+  const handleSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
       const response = await fetch('/api/orders', {

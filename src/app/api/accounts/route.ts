@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / pageSize),
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching accounts:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
     const account = await db.accountForSale.create({ data });
 
     return NextResponse.json(account);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error creating account:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { emailService } from '@/lib/email';
+import { emailService, Order, AccountForSale } from '@/lib/email';
 import { decryptAccountCredentials } from '@/lib/encryption';
 
 // Type assertions for Prisma models until client is properly generated
@@ -99,13 +99,13 @@ async function processOrderCreation({
   return order;
 }
 
-async function sendAccountEmail(order: any, account: any, customerEmail: string) {
+async function sendAccountEmail(order: Order & { account: AccountForSale; user: any }, account: AccountForSale, customerEmail: string) {
   try {
     // Decrypt account credentials before sending email
     const decryptedCredentials = decryptAccountCredentials({
-      gameUsername: account.gameUsername,
-      gamePassword: account.gamePassword,
-      additionalInfo: account.additionalInfo,
+      gameUsername: account.gameUsername ?? undefined,
+      gamePassword: account.gamePassword ?? undefined,
+      additionalInfo: account.additionalInfo ?? undefined,
     });
 
     const emailSent = await emailService.sendAccountDelivery({
@@ -228,7 +228,7 @@ export async function POST(request: Request) {
       },
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Order creation error:', error);
     
     return NextResponse.json({ 
@@ -302,7 +302,7 @@ export async function GET(request: Request) {
       }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to fetch orders:', error);
     return NextResponse.json(
       { 

@@ -57,7 +57,7 @@ export async function GET(
     };
 
     return NextResponse.json(accountWithDecryptedCredentials);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching account:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -179,7 +179,7 @@ export async function PUT(
     });
 
     return NextResponse.json(account);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating account:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -205,7 +205,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Delete account error:", error);
     return NextResponse.json(
       { error: "Failed to delete account" },

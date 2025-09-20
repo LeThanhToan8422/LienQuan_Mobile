@@ -68,7 +68,8 @@ export async function POST(req: Request) {
     
     // Handle specific database errors
     if (error && typeof error === "object" && "code" in error) {
-      if (error.code === "P2002") {
+      const err = error as { code?: string };
+      if (err.code === "P2002") {
         return NextResponse.json({ 
           error: "Email đã được sử dụng. Vui lòng sử dụng email khác." 
         }, { status: 400 });

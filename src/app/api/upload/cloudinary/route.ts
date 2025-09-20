@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       })
     );
     return NextResponse.json({ uploads: uploads.filter(Boolean) });
-  } catch (error) {
+  } catch (error: unknown) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

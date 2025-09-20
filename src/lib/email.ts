@@ -30,7 +30,7 @@ export interface AccountForSale {
   matches?: number | null;
   winRate?: number | null;
   reputation?: number | null;
-  characterSkins?: Record<string, any> | null;
+  characterSkins?: Record<string, unknown> | null;
   gameUsername?: string | null;
   gamePassword?: string | null;
   loginMethod?: string | null;
@@ -200,7 +200,7 @@ export class EmailService {
       });
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to send account delivery email:', error);
       return false;
     }
@@ -254,7 +254,7 @@ export class EmailService {
       });
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to send order confirmation email:', error);
       return false;
     }
@@ -267,7 +267,7 @@ export class EmailService {
     try {
       await this.transporter.verify();
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Email configuration test failed:', error);
       return false;
     }
