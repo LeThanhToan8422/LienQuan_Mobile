@@ -38,7 +38,7 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Record<string, any>) => {
     setLoading(true);
     try {
       const response = await fetch('/api/orders', {

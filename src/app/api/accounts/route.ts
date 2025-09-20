@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { encryptAccountCredentials } from "@/lib/encryption";
 
 // Type assertion for Prisma client until it's properly generated
-const db = prisma as any;
+const db = prisma as unknown as any;
 import type { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {

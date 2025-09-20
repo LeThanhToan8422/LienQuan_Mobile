@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { encryptAccountCredentials, decryptAccountCredentials } from "@/lib/encryption";
 
 // Type assertion for Prisma client until it's properly generated
-const db = prisma as any;
+const db = prisma as unknown as any;
 
 // File: src/app/api/accounts/[id]/route.ts
 export async function GET(

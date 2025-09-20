@@ -30,7 +30,7 @@ export interface AccountForSale {
   matches?: number | null;
   winRate?: number | null;
   reputation?: number | null;
-  characterSkins?: any;
+  characterSkins?: Record<string, any> | null;
   gameUsername?: string | null;
   gamePassword?: string | null;
   loginMethod?: string | null;

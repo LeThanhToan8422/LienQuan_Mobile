@@ -19,10 +19,11 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
-    // rules: {
-    //   "react/style-prop-object": "off",
-    //   "react/forbid-dom-props": ["warn", { forbid: ["style"] }],
-    // },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "react-hooks/exhaustive-deps": "warn"
+    },
   },
 ];
 

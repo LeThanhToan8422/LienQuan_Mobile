@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Card, Form, Input, Typography, Divider, Space } from "antd";
+import { Alert, Button, Card, Form, Input, Typography, Divider } from "antd";
 import Link from "next/link";
 import useRegister from "./hooks/useRegister";
 

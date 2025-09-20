@@ -6,7 +6,7 @@ import { emailService } from '@/lib/email';
 import { decryptAccountCredentials } from '@/lib/encryption';
 
 // Type assertions for Prisma models until client is properly generated
-const db = prisma as any;
+const db = prisma as unknown as any;
 
 // Validation schemas
 const createOrderSchema = z.object({
@@ -137,8 +137,8 @@ export async function POST(request: Request) {
     }
 
     // Extract user information from session
-    const userEmail = (session.user as any).email;
-    const userName = (session.user as any).name;
+    const userEmail = (session.user as { email?: string })?.email;
+    const userName = (session.user as { name?: string })?.name;
     
     if (!userEmail) {
       return NextResponse.json(
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     
     if (!parseResult.success) {
       const errors = parseResult.error.issues
-        .map((issue: any) => issue.message)
+        .map((issue: z.ZodIssue) => issue.message)
         .join(', ');
       return NextResponse.json({ error: errors }, { status: 400 });
     }
@@ -257,8 +257,8 @@ export async function GET(request: Request) {
     const skip = (page - 1) * pageSize;
 
     // Determine access level
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+    const userId = (session.user as { id?: string })?.id;
+    const userRole = (session.user as { role?: string })?.role;
     const isAdmin = userRole === 'ADMIN';
 
     // Build query filter
