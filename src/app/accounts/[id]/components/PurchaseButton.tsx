@@ -58,7 +58,7 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as { success: boolean; error?: string; paymentUrl?: string };
       
       if (data.success) {
         message.success('Đơn hàng đã được tạo thành công!');

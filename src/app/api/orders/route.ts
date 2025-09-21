@@ -2,11 +2,28 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { emailService, Order, AccountForSale } from '@/lib/email';
+import { emailService, Order, AccountForSale, User } from '@/lib/email';
 import { decryptAccountCredentials } from '@/lib/encryption';
 
 // Type assertions for Prisma models until client is properly generated
-const db = prisma as unknown as any;
+const db = prisma as unknown as {
+  user: {
+    findUnique: (args: { where: { email: string } }) => Promise<User | null>;
+    create: (args: { data: Record<string, unknown> }) => Promise<User>;
+  };
+  order: {
+    create: (args: { data: Record<string, unknown> }) => Promise<{ id: string; orderNumber: string; userId: string; accountId: string; amount: number; status: string; customerEmail: string; customerName: string; deliveredAt?: Date | null; createdAt: Date; updatedAt: Date }>;
+    findUnique: (args: { where: { id: string }; include: Record<string, unknown> }) => Promise<{ id: string; orderNumber: string; userId: string; accountId: string; amount: number; status: string; customerEmail: string; customerName: string; deliveredAt?: Date | null; createdAt: Date; updatedAt: Date; account: AccountForSale; user: User } | null>;
+    findMany: (args: { where: Record<string, unknown>; include: Record<string, unknown>; orderBy: Record<string, string>; skip: number; take: number }) => Promise<Array<{ id: string; orderNumber: string; userId: string; accountId: string; amount: number; status: string; customerEmail: string; customerName: string; deliveredAt?: Date | null; createdAt: Date; updatedAt: Date; account: AccountForSale; payments: Array<{ id: string; method: string; status: string; amount: number; paidAt: Date | null }> }>>;
+  };
+  accountForSale: {
+    findUnique: (args: { where: { id: string } }) => Promise<AccountForSale | null>;
+    update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<AccountForSale>;
+  };
+  payment: {
+    create: (args: { data: Record<string, unknown> }) => Promise<{ id: string; orderId: string; amount: number; method: string; status: string; paidAt: Date | null; gatewayTransactionId: string | null }>;
+  };
+};
 
 // Validation schemas
 const createOrderSchema = z.object({
@@ -99,7 +116,7 @@ async function processOrderCreation({
   return order;
 }
 
-async function sendAccountEmail(order: Order & { account: AccountForSale; user: any }, account: AccountForSale, customerEmail: string) {
+async function sendAccountEmail(order: { id: string; orderNumber: string; userId: string; accountId: string; amount: number; status: string; customerEmail: string; customerName: string; deliveredAt?: Date | null; createdAt: Date; updatedAt: Date; account: AccountForSale; user: User }, account: AccountForSale, customerEmail: string) {
   try {
     // Decrypt account credentials before sending email
     const decryptedCredentials = decryptAccountCredentials({
@@ -109,7 +126,10 @@ async function sendAccountEmail(order: Order & { account: AccountForSale; user: 
     });
 
     const emailSent = await emailService.sendAccountDelivery({
-      order,
+      order: {
+        ...order,
+        deliveryMethod: 'email',
+      },
       // Use decrypted credentials for email
       gameUsername: decryptedCredentials.gameUsername || `demo_user_${Date.now()}`,
       gamePassword: decryptedCredentials.gamePassword || 'DemoPassword123!',
@@ -197,6 +217,13 @@ export async function POST(request: Request) {
         user: true,
       },
     });
+
+    if (!completedOrder) {
+      return NextResponse.json({ 
+        error: 'Không thể tìm thấy đơn hàng sau khi tạo',
+        success: false
+      }, { status: 500 });
+    }
 
     // Send email notification
     const emailResult = await sendAccountEmail(completedOrder, account, customerEmail);

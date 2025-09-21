@@ -11,7 +11,7 @@ export interface Order {
   customerEmail: string;
   customerName: string;
   deliveredAt?: Date | null;
-  deliveryMethod: string;
+  deliveryMethod?: string;
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;

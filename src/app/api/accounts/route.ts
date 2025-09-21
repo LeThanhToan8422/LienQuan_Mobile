@@ -3,7 +3,13 @@ import prisma from "@/lib/prisma";
 import { encryptAccountCredentials } from "@/lib/encryption";
 
 // Type assertion for Prisma client until it's properly generated
-const db = prisma as unknown as any;
+const db = prisma as unknown as {
+  accountForSale: {
+    findMany: (args: { where: any; skip: number; take: number; select: Record<string, boolean>; orderBy: Record<string, string> }) => Promise<any[]>;
+    count: (args: { where: any }) => Promise<number>;
+    create: (args: { data: Record<string, any> }) => Promise<any>;
+  };
+};
 import type { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {

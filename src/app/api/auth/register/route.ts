@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // Validate input
     const parseResult = bodySchema.safeParse(json);
     if (!parseResult.success) {
-      const errors = parseResult.error.issues.map((err: z.ZodIssue) => err.message).join(", ");
+      const errors = parseResult.error.issues.map((err) => err.message).join(", ");
       return NextResponse.json({ error: errors }, { status: 400 });
     }
     

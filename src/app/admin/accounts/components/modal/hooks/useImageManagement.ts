@@ -58,7 +58,7 @@ export default function useImageManagement() {
 
         // Show success message
         message.success(MESSAGES.ADD_IMAGE_SUCCESS);
-      } catch (error: unknown) {
+      } catch {
         // Show error message if something goes wrong
         message.error(MESSAGES.ADD_IMAGE_ERROR);
       }

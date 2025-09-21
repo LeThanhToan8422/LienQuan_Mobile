@@ -3,7 +3,13 @@ import prisma from "@/lib/prisma";
 import { encryptAccountCredentials, decryptAccountCredentials } from "@/lib/encryption";
 
 // Type assertion for Prisma client until it's properly generated
-const db = prisma as unknown as any;
+const db = prisma as unknown as {
+  accountForSale: {
+    findUnique: (args: { where: { id: string }; select: Record<string, boolean> }) => Promise<any>;
+    update: (args: { where: { id: string }; data: Record<string, any> }) => Promise<any>;
+    delete: (args: { where: { id: string } }) => Promise<any>;
+  };
+};
 
 // File: src/app/api/accounts/[id]/route.ts
 export async function GET(
