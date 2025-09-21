@@ -22,12 +22,24 @@ export default function useLogin(callbackUrl?: string | null) {
       });
       
       if (res?.ok) {
-        // Wait a bit for session to be updated
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Poll for session update until it's available
+        let session = null;
+        let attempts = 0;
+        const maxAttempts = 20; // Maximum 10 seconds (20 * 500ms)
         
-        // Get the updated session to check user role
-        const session = await getSession();
-        const user = session?.user as { role?: string } | undefined;
+        while (!session && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          session = await getSession();
+          attempts++;
+        }
+        
+        if (!session) {
+          setError("Không thể tải thông tin phiên đăng nhập");
+          setLoading(false);
+          return;
+        }
+        
+        const user = session.user as { role?: string } | undefined;
         
         // Determine redirect URL based on user role
         let redirectUrl = callbackUrl;
