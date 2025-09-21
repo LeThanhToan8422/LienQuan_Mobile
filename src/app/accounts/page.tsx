@@ -16,12 +16,12 @@ import {
   Alert,
 } from "antd";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import useAccounts from "./hooks/useAccounts";
 import { RANK_OPTIONS, getRankLabel } from "@/lib/ranks";
 import Image from "next/image";
 
-export default function AccountsPage() {
+function AccountsContent() {
   const searchParams = useSearchParams();
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   
@@ -398,5 +398,20 @@ export default function AccountsPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function AccountsPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-7xl px-4 py-10">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <Typography.Text className="mt-4 block">Đang tải...</Typography.Text>
+        </div>
+      </div>
+    }>
+      <AccountsContent />
+    </Suspense>
   );
 }

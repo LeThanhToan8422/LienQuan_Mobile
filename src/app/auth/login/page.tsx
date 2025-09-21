@@ -3,12 +3,13 @@
 import { Alert, Button, Card, Form, Input, Typography, Divider } from "antd";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import useLogin from "./hooks/useLogin";
 
-export default function LoginPage() {
-  const { loading, error, onFinish } = useLogin();
+function LoginForm() {
   const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
+  const { loading, error, onFinish } = useLogin(callbackUrl);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,5 +85,13 @@ export default function LoginPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

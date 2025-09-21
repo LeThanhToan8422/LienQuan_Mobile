@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, Result, Button, Spin, Typography } from "antd";
 import Link from "next/link";
 
-export default function VNPayReturnPage() {
+function VNPayReturnContent() {
   const [loading, setLoading] = useState(true);
   const [paymentResult, setPaymentResult] = useState<{
     success: boolean;
@@ -95,5 +95,20 @@ export default function VNPayReturnPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function VNPayReturnPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+        <Spin size="large" />
+        <Typography.Title level={4} className="mt-4">
+          Đang tải...
+        </Typography.Title>
+      </div>
+    }>
+      <VNPayReturnContent />
+    </Suspense>
   );
 }

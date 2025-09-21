@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
 
 export type LoginFormValues = { email: string; password: string };
 
-export default function useLogin() {
+export default function useLogin(callbackUrl?: string | null) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,8 +27,6 @@ export default function useLogin() {
       const user = session?.user as { role?: string } | undefined;
       
       // Get the callback URL or determine redirect based on role
-      const callbackUrl = searchParams.get("callbackUrl");
-      
       if (callbackUrl) {
         router.push(callbackUrl);
       } else {
