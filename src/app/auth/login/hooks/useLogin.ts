@@ -95,7 +95,13 @@ export default function useLogin(callbackUrl?: string | null) {
         console.log(finalMessage);
         localStorage.setItem('debug-login', JSON.stringify({ step: 'executing-redirect', message: finalMessage, url: redirectUrl, timestamp: new Date().toISOString() }));
         
-        router.push(redirectUrl);
+        // Stop loading before redirect
+        setLoading(false);
+        
+        // Use setTimeout to ensure state update completes before redirect
+        setTimeout(() => {
+          router.push(redirectUrl);
+        }, 100);
       } else {
         setError("Email hoặc mật khẩu không đúng");
         setLoading(false);

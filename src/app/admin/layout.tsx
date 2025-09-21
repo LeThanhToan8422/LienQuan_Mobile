@@ -15,11 +15,23 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    console.log("🔍 AdminLayout useEffect triggered:", { status, session: !!session });
+    console.log("🔍 AdminLayout useEffect triggered:", { status, session: !!session, hasCheckedAuth });
+    localStorage.setItem('debug-admin-layout', JSON.stringify({ 
+      step: 'useEffect-triggered', 
+      status, 
+      hasSession: !!session, 
+      hasCheckedAuth,
+      timestamp: new Date().toISOString() 
+    }));
     
     // Wait for session to load completely
     if (status === "loading") {
       console.log("⏳ Session still loading...");
+      localStorage.setItem('debug-admin-layout', JSON.stringify({ 
+        step: 'session-loading', 
+        message: "Session still loading...",
+        timestamp: new Date().toISOString() 
+      }));
       return;
     }
 
@@ -93,6 +105,13 @@ export default function AdminLayout({
   // Show loading while checking authentication
   if (status === "loading" || !hasCheckedAuth) {
     console.log("🔄 AdminLayout rendering loading state:", { status, hasCheckedAuth });
+    localStorage.setItem('debug-admin-layout', JSON.stringify({ 
+      step: 'rendering-loading', 
+      status, 
+      hasCheckedAuth,
+      message: "Rendering loading state",
+      timestamp: new Date().toISOString() 
+    }));
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

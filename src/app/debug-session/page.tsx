@@ -9,6 +9,7 @@ export default function DebugSessionPage() {
   const [freshSession, setFreshSession] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [debugLogs, setDebugLogs] = useState<any[]>([]);
+  const [adminLayoutLogs, setAdminLayoutLogs] = useState<any[]>([]);
 
   const refreshSession = async () => {
     setLoading(true);
@@ -29,6 +30,12 @@ export default function DebugSessionPage() {
       if (logs) {
         const parsedLogs = JSON.parse(logs);
         setDebugLogs(Array.isArray(parsedLogs) ? parsedLogs : [parsedLogs]);
+      }
+      
+      const adminLogs = localStorage.getItem('debug-admin-layout');
+      if (adminLogs) {
+        const parsedAdminLogs = JSON.parse(adminLogs);
+        setAdminLayoutLogs(Array.isArray(parsedAdminLogs) ? parsedAdminLogs : [parsedAdminLogs]);
       }
     } catch (error) {
       console.error("Error loading debug logs:", error);
@@ -98,7 +105,7 @@ export default function DebugSessionPage() {
           </div>
 
           <div>
-            <Typography.Title level={4}>Debug Logs (from localStorage):</Typography.Title>
+            <Typography.Title level={4}>Login Debug Logs (from localStorage):</Typography.Title>
             <Button onClick={loadDebugLogs} className="mb-2">
               Refresh Debug Logs
             </Button>
@@ -122,7 +129,33 @@ export default function DebugSessionPage() {
                 ))}
               </div>
             ) : (
-              <Typography.Text type="secondary">No debug logs found</Typography.Text>
+              <Typography.Text type="secondary">No login debug logs found</Typography.Text>
+            )}
+          </div>
+
+          <div>
+            <Typography.Title level={4}>AdminLayout Debug Logs (from localStorage):</Typography.Title>
+            {adminLayoutLogs.length > 0 ? (
+              <div className="bg-blue-50 p-4 rounded max-h-60 overflow-y-auto">
+                {adminLayoutLogs.map((log, index) => (
+                  <div key={index} className="mb-2 text-sm">
+                    <Typography.Text strong>{log.step}:</Typography.Text> {log.message || 'No message'}
+                    <br />
+                    <Typography.Text type="secondary" className="text-xs">
+                      {log.timestamp}
+                    </Typography.Text>
+                    {(log.status || log.hasSession || log.hasCheckedAuth !== undefined) && (
+                      <div className="mt-1">
+                        <Typography.Text code className="text-xs">
+                          Status: {log.status}, HasSession: {log.hasSession ? 'Yes' : 'No'}, HasCheckedAuth: {log.hasCheckedAuth ? 'Yes' : 'No'}
+                        </Typography.Text>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Typography.Text type="secondary">No AdminLayout debug logs found</Typography.Text>
             )}
           </div>
 
@@ -146,10 +179,14 @@ export default function DebugSessionPage() {
                 Go to Login
               </Button>
               <Button 
-                onClick={() => localStorage.removeItem('debug-login')}
+                onClick={() => {
+                  localStorage.removeItem('debug-login');
+                  localStorage.removeItem('debug-admin-layout');
+                  loadDebugLogs();
+                }}
                 danger
               >
-                Clear Debug Logs
+                Clear All Debug Logs
               </Button>
             </Space>
           </div>
