@@ -23,7 +23,7 @@ export default function useRegister() {
     
     try {
       // Remove confirmPassword from the payload
-      const { confirmPassword, ...payload } = values;
+      const { confirmPassword: _, ...payload } = values;
       
       const res = await fetch("/api/auth/register", {
         method: "POST",

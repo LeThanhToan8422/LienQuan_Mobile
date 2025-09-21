@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { emailService, Order, AccountForSale, User } from '@/lib/email';
+import { emailService, AccountForSale, User } from '@/lib/email';
 import { decryptAccountCredentials } from '@/lib/encryption';
 
 // Type assertions for Prisma models until client is properly generated
