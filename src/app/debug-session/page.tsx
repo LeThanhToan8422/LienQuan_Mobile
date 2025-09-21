@@ -8,6 +8,7 @@ export default function DebugSessionPage() {
   const { data: session, status } = useSession();
   const [freshSession, setFreshSession] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<any[]>([]);
 
   const refreshSession = async () => {
     setLoading(true);
@@ -22,8 +23,21 @@ export default function DebugSessionPage() {
     }
   };
 
+  const loadDebugLogs = () => {
+    try {
+      const logs = localStorage.getItem('debug-login');
+      if (logs) {
+        const parsedLogs = JSON.parse(logs);
+        setDebugLogs(Array.isArray(parsedLogs) ? parsedLogs : [parsedLogs]);
+      }
+    } catch (error) {
+      console.error("Error loading debug logs:", error);
+    }
+  };
+
   useEffect(() => {
     refreshSession();
+    loadDebugLogs();
   }, []);
 
   return (
@@ -84,6 +98,35 @@ export default function DebugSessionPage() {
           </div>
 
           <div>
+            <Typography.Title level={4}>Debug Logs (from localStorage):</Typography.Title>
+            <Button onClick={loadDebugLogs} className="mb-2">
+              Refresh Debug Logs
+            </Button>
+            {debugLogs.length > 0 ? (
+              <div className="bg-gray-100 p-4 rounded max-h-60 overflow-y-auto">
+                {debugLogs.map((log, index) => (
+                  <div key={index} className="mb-2 text-sm">
+                    <Typography.Text strong>{log.step}:</Typography.Text> {log.message}
+                    <br />
+                    <Typography.Text type="secondary" className="text-xs">
+                      {log.timestamp}
+                    </Typography.Text>
+                    {log.data && (
+                      <div className="mt-1">
+                        <Typography.Text code className="text-xs">
+                          {JSON.stringify(log.data, null, 2)}
+                        </Typography.Text>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Typography.Text type="secondary">No debug logs found</Typography.Text>
+            )}
+          </div>
+
+          <div>
             <Typography.Title level={4}>Actions:</Typography.Title>
             <Space>
               <Button 
@@ -101,6 +144,12 @@ export default function DebugSessionPage() {
                 onClick={() => window.location.href = "/auth/login"}
               >
                 Go to Login
+              </Button>
+              <Button 
+                onClick={() => localStorage.removeItem('debug-login')}
+                danger
+              >
+                Clear Debug Logs
               </Button>
             </Space>
           </div>

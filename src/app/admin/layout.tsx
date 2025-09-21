@@ -2,6 +2,7 @@
 
 import { useSession, getSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Spin, Alert } from "antd";
 
 export default function AdminLayout({
@@ -11,6 +12,7 @@ export default function AdminLayout({
 }) {
   const { data: session, status } = useSession();
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     console.log("🔍 AdminLayout useEffect triggered:", { status, session: !!session });
@@ -36,7 +38,7 @@ export default function AdminLayout({
       } else {
         console.log("❌ Not admin role, redirecting to accounts");
         // Not admin, redirect to accounts with error
-        window.location.href = "/accounts?error=access-denied";
+        router.push("/accounts?error=access-denied");
         return;
       }
     }
@@ -52,7 +54,7 @@ export default function AdminLayout({
       if (attempts >= maxAttempts) {
         console.log("❌ AdminLayout polling timeout, redirecting to login");
         // Timeout - redirect to login
-        window.location.href = "/auth/login?callbackUrl=/admin";
+        router.push("/auth/login?callbackUrl=/admin");
         return;
       }
 
@@ -76,7 +78,7 @@ export default function AdminLayout({
           setHasCheckedAuth(true);
         } else {
           console.log("❌ Non-admin role found via polling, redirecting to accounts");
-          window.location.href = "/accounts?error=access-denied";
+          router.push("/accounts?error=access-denied");
         }
       } else {
         console.log("⏳ No session yet, continuing to poll...");
