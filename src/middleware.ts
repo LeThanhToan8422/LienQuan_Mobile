@@ -4,9 +4,11 @@ import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  console.log("Middleware running for path:", pathname);
   
   if (pathname.startsWith("/admin")) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || process.env.NEXT_PUBLIC_NEXTAUTH_SECRET || "1234567890" });
+    console.log("Token:", token);
     
     // If not authenticated, redirect to login
     if (!token) {
