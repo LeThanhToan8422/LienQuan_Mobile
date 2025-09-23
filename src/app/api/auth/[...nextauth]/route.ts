@@ -60,7 +60,7 @@ const handler = NextAuth({
   pages: {
     signIn: "/auth/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || process.env.NEXT_PUBLIC_NEXTAUTH_SECRET || "1234567890",
+  secret: "4f9c2d8a1b7e6f0d5c3a9b8e7f6d4c2a",
 });
 
 export { handler as GET, handler as POST };
