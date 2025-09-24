@@ -23,6 +23,22 @@ export default function useLogin(callbackUrl?: string | null) {
       });
       
       if (res?.ok) {
+        // Fetch session to get user id/role via /api/auth/session
+        try {
+          const sessionRes = await fetch("/api/auth/session", { cache: "no-store" });
+          const session = sessionRes.ok ? await sessionRes.json() : null;
+          const userId = session?.user?.id as string | undefined;
+          const role = session?.user?.role as string | undefined;
+          if (userId && role) {
+            await fetch("/api/auth/session-cookie", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, role }),
+            });
+          }
+        } catch (_) {
+          // ignore cookie set failure and continue redirect
+        }
         // Stop loading immediately
         setLoading(false);
         
