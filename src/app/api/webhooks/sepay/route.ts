@@ -38,6 +38,16 @@ async function sendAccountEmail(orderWithRelations: { id: string; orderNumber: s
 
 export async function POST(request: Request) {
   try {
+    // Optional API Key verification
+    const configuredApiKey = process.env.SEPAY_API_KEY;
+    if (configuredApiKey) {
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+      const expected = `Apikey ${configuredApiKey}`;
+      if (!authHeader || authHeader.trim() !== expected) {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const body = await request.json();
 
     // Basic fields from SePay webhook
@@ -64,8 +74,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Đơn hàng không tồn tại' }, { status: 404 });
     }
 
+    // Validate transfer direction and amount
+    if (String(body?.transferType || '').toLowerCase() !== 'in') {
+      return NextResponse.json({ success: false, message: 'Sai loại giao dịch' }, { status: 400 });
+    }
+    if (typeof transferAmount === 'number' && transferAmount !== order.amount) {
+      return NextResponse.json({ success: false, message: 'Số tiền không khớp đơn hàng' }, { status: 400 });
+    }
+
     // Update payment
     const payment = await db.payment.findFirst({ where: { orderId: order.id } });
+    // Idempotency: if payment already marked SUCCESS, return success
+    if ((payment as unknown as { status?: string })?.status === 'SUCCESS') {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
     if (payment) {
       await db.payment.update({
         where: { id: payment.id },
