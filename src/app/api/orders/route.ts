@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
 import { emailService, AccountForSale, User } from '@/lib/email';
 import { decryptAccountCredentials } from '@/lib/encryption';
@@ -30,7 +31,6 @@ const createOrderSchema = z.object({
   accountId: z.string().min(1, 'Account ID is required'),
   customerName: z.string().min(1, 'Customer name is required'),
   customerEmail: z.string().email('Valid email is required'),
-  paymentMethod: z.enum(['VNPAY', 'ZALOPAY', 'BANK', 'MOMO']),
 });
 
 type CreateOrderRequest = z.infer<typeof createOrderSchema>;
@@ -81,7 +81,7 @@ async function processOrderCreation({
   customerName: string;
   paymentMethod: string;
 }) {
-  // Create order
+  // Create order in pending state; payment via SePay webhook will complete it
   const order = await db.order.create({
     data: {
       orderNumber,
@@ -90,26 +90,20 @@ async function processOrderCreation({
       amount,
       customerEmail,
       customerName,
-      status: 'COMPLETED',
-      deliveredAt: new Date(),
+      status: 'PENDING',
+      deliveredAt: null,
     },
   });
 
-  // Update account status
-  await db.accountForSale.update({
-    where: { id: accountId },
-    data: { status: 'sold' },
-  });
-
-  // Create payment record
+  // Create payment record in pending state
   await db.payment.create({
     data: {
       orderId: order.id,
       amount,
       method: paymentMethod,
-      status: 'SUCCESS',
-      paidAt: new Date(),
-      gatewayTransactionId: `DEMO_${Date.now()}`,
+      status: 'PENDING',
+      paidAt: null,
+      gatewayTransactionId: null,
     },
   });
 
@@ -148,7 +142,7 @@ async function sendAccountEmail(order: { id: string; orderNumber: string; userId
 export async function POST(request: Request) {
   try {
     // Check authentication
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json(
         { error: 'Vui lòng đăng nhập để tiếp tục' }, 
@@ -178,7 +172,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errors }, { status: 400 });
     }
 
-    const { accountId, customerName, customerEmail, paymentMethod }: CreateOrderRequest = parseResult.data;
+    const { accountId, customerName, customerEmail }: CreateOrderRequest = parseResult.data;
 
     // Check account availability
     const account = await db.accountForSale.findUnique({
@@ -195,10 +189,64 @@ export async function POST(request: Request) {
     // Find or create user
     const userId = await findOrCreateUser(userEmail, userName);
     
-    // Generate order number
+    // Reuse existing pending order (any time) for same user + account if price unchanged
+    const existingPending = await db.order.findMany({
+      where: {
+        userId,
+        accountId,
+        status: 'PENDING',
+      } as unknown as Record<string, unknown>,
+      include: {},
+      orderBy: { createdAt: 'desc' },
+      skip: 0,
+      take: 1,
+    });
+    if (Array.isArray(existingPending) && existingPending.length > 0) {
+      const recent = existingPending[0] as unknown as { id: string; orderNumber: string; amount: number; status: string; customerEmail: string };
+      if (recent.amount === account.price) {
+        const qrUrlReuse = `https://qr.sepay.vn/img?acc=VQRQAELDF3783&bank=MBBank&amount=${recent.amount}&des=${encodeURIComponent(recent.orderNumber)}`;
+        return NextResponse.json({
+          success: true,
+          message: 'Bạn đang có đơn hàng chờ thanh toán cho tài khoản này. Vui lòng quét lại QR.',
+          order: {
+            id: recent.id,
+            orderNumber: recent.orderNumber,
+            amount: recent.amount,
+            status: recent.status,
+            customerEmail: recent.customerEmail,
+          },
+          sepay: { qrUrl: qrUrlReuse },
+        });
+      }
+      // If price changed, cancel the old pending order before creating a new one
+      try {
+        await (prisma as any).order.update({ where: { id: (recent as any).id }, data: { status: 'CANCELLED', notes: 'Auto-cancel: price changed' } });
+      } catch {}
+    }
+
+    // Basic rate-limit: max 3 pending orders within 10 minutes per user
+    const pendingRecent = await db.order.findMany({
+      where: {
+        userId,
+        status: 'PENDING',
+        createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } as unknown as Record<string, unknown>,
+      } as unknown as Record<string, unknown>,
+      include: {},
+      orderBy: { createdAt: 'desc' },
+      skip: 0,
+      take: 10,
+    });
+    if (Array.isArray(pendingRecent) && pendingRecent.length >= 3) {
+      return NextResponse.json({
+        success: false,
+        error: 'Bạn đang có quá nhiều đơn hàng đang chờ thanh toán. Vui lòng hoàn tất một đơn trước.',
+      }, { status: 429 });
+    }
+
+    // Generate new order number
     const orderNumber = await createOrderNumber();
 
-    // Process order creation
+    // Process order creation (default payment method: SePay)
     const order = await processOrderCreation({
       orderNumber,
       userId,
@@ -206,11 +254,11 @@ export async function POST(request: Request) {
       amount: account.price,
       customerEmail,
       customerName,
-      paymentMethod,
+      paymentMethod: 'BANK',
     });
 
-    // Get complete order information
-    const completedOrder = await db.order.findUnique({
+    // Get order information
+    const pendingOrder = await db.order.findUnique({
       where: { id: order.id },
       include: {
         account: true,
@@ -218,40 +266,28 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!completedOrder) {
+    if (!pendingOrder) {
       return NextResponse.json({ 
         error: 'Không thể tìm thấy đơn hàng sau khi tạo',
         success: false
       }, { status: 500 });
     }
 
-    // Send email notification
-    const emailResult = await sendAccountEmail(completedOrder, account, customerEmail);
-
-    // Return response
-    const message = emailResult.success 
-      ? '🎉 Đơn hàng hoàn thành! Thông tin tài khoản đã được gửi qua email.'
-      : 'Đơn hàng hoàn thành nhưng có lỗi khi gửi email. Vui lòng liên hệ hỗ trợ.';
+    // Build SePay QR URL
+    const qrUrl = `https://qr.sepay.vn/img?acc=VQRQAELDF3783&bank=MBBank&amount=${pendingOrder.amount}&des=${encodeURIComponent(pendingOrder.orderNumber)}`;
 
     return NextResponse.json({
       success: true,
-      message,
+      message: 'Đơn hàng đã được tạo. Vui lòng quét QR để thanh toán.',
       order: {
-        id: completedOrder.id,
-        orderNumber: completedOrder.orderNumber,
-        amount: completedOrder.amount,
-        status: completedOrder.status,
-        deliveredAt: completedOrder.deliveredAt,
-        customerEmail: completedOrder.customerEmail,
+        id: pendingOrder.id,
+        orderNumber: pendingOrder.orderNumber,
+        amount: pendingOrder.amount,
+        status: pendingOrder.status,
+        customerEmail: pendingOrder.customerEmail,
       },
-      email: {
-        sent: emailResult.success,
-        to: customerEmail,
-        error: emailResult.error,
-      },
-      demo: {
-        note: 'Đây là chế độ demo - thanh toán đã được bỏ qua',
-        paymentSkipped: true,
+      sepay: {
+        qrUrl,
       },
     });
 

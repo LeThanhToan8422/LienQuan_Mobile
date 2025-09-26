@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Modal, Form, Input, Select, message } from "antd";
+import { Button, Modal, App, Spin } from "antd";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -14,16 +14,15 @@ type Props = {
 type FormValues = {
   customerName: string;
   customerEmail: string;
-  paymentMethod: string;
 };
 
 export default function PurchaseButton({ accountId, price, onClick }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
   const { data: session } = useSession();
   const router = useRouter();
-
+  const { message } = App.useApp();
+  const [checkingPending, setCheckingPending] = useState(false);
   const handlePurchase = () => {
     if (!session) {
       message.warning('Vui lòng đăng nhập để mua tài khoản');
@@ -35,51 +34,29 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
       onClick();
     } else {
       setIsModalOpen(true);
-      // Pre-fill form with user data
-      form.setFieldsValue({
-        customerName: session.user?.name || '',
-        customerEmail: session.user?.email || '',
-        paymentMethod: 'VNPAY',
-      });
-    }
-  };
-
-  const handleSubmit = async (values: FormValues) => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accountId,
-          ...values,
-        }),
-      });
-
-      const data = await response.json() as { success: boolean; error?: string; paymentUrl?: string };
-      
-      if (data.success) {
-        message.success('Đơn hàng đã được tạo thành công!');
-        
-        if (data.paymentUrl) {
-          // Redirect to payment gateway
-          window.location.href = data.paymentUrl;
-        } else {
-          setIsModalOpen(false);
-          message.info('Vui lòng chờ xác nhận thanh toán');
-        }
-      } else {
-        message.error(data.error || 'Có lỗi xảy ra khi tạo đơn hàng');
+      // Try to reuse pending order automatically; show spinner to avoid form flash
+      if (accountId && price) {
+        setCheckingPending(true);
+        fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId, customerName: session.user?.name || '', customerEmail: session.user?.email || '' }),
+        })
+          .then(async (res) => res.json())
+          .then((data: { success: boolean; sepay?: { qrUrl: string } }) => {
+            if (data?.success && data.sepay?.qrUrl) {
+              setQrUrl(data.sepay.qrUrl);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setCheckingPending(false));
       }
-    } catch (error) {
-      console.error('Purchase error:', error);
-      message.error('Có lỗi xảy ra khi tạo đơn hàng');
-    } finally {
-      setLoading(false);
     }
   };
+
+  const handleSubmit = async (_values: FormValues) => {};
+
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   return (
     <>
@@ -110,69 +87,42 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
         footer={null}
         width={500}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          className="mt-4"
-        >
-          <Form.Item
-            name="customerName"
-            label="Họ và tên"
-            rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
-          >
-            <Input placeholder="Nhập họ và tên của bạn" />
-          </Form.Item>
-
-          <Form.Item
-            name="customerEmail"
-            label="Email nhận thông tin tài khoản"
-            rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
-            ]}
-          >
-            <Input placeholder="Nhập email để nhận thông tin tài khoản" />
-          </Form.Item>
-
-          <Form.Item
-            name="paymentMethod"
-            label="Phương thức thanh toán"
-            rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán' }]}
-          >
-            <Select placeholder="Chọn phương thức thanh toán">
-              <Select.Option value="VNPAY">VNPay</Select.Option>
-              <Select.Option value="ZALOPAY">ZaloPay</Select.Option>
-              <Select.Option value="MOMO">MoMo</Select.Option>
-              <Select.Option value="BANK">Chuyển khoản ngân hàng</Select.Option>
-            </Select>
-          </Form.Item>
-
-          {price && (
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Tổng thanh toán:</span>
-                <span className="text-xl font-bold text-blue-600">
-                  {new Intl.NumberFormat('vi-VN').format(price)}₫
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <Button onClick={() => setIsModalOpen(false)} className="flex-1">
-              Hủy
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              className="flex-1"
-            >
-              {loading ? 'Đang xử lý...' : 'Thanh toán'}
-            </Button>
+        {checkingPending && (
+          <div className="mt-6 flex items-center justify-center">
+            <Spin />
           </div>
-        </Form>
+        )}
+        {!checkingPending && !qrUrl && (
+          <div className="mt-6">
+            {price && (
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Tổng thanh toán:</span>
+                  <span className="text-xl font-bold text-blue-600">
+                    {new Intl.NumberFormat('vi-VN').format(price)}₫
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-center text-gray-600">
+              Đang chuẩn bị mã QR...
+            </div>
+            <div className="mt-4">
+              <Button onClick={() => setIsModalOpen(false)} className="w-full">Đóng</Button>
+            </div>
+          </div>
+        )}
+        {!checkingPending && qrUrl && (
+          <div className="mt-2">
+            <p className="mb-2">Vui lòng quét mã QR để thanh toán. Đơn hàng sẽ tự động xác nhận sau khi nhận được giao dịch.</p>
+            <div className="flex justify-center">
+              <img src={qrUrl} alt="SePay QR" className="rounded-lg border" />
+            </div>
+            <div className="mt-4">
+              <Button onClick={() => { setQrUrl(null); setIsModalOpen(false); }} className="w-full">Đóng</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   );
