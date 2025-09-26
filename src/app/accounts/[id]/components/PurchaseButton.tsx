@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Modal, App, Spin } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -43,9 +43,11 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
           body: JSON.stringify({ accountId, customerName: session.user?.name || '', customerEmail: session.user?.email || '' }),
         })
           .then(async (res) => res.json())
-          .then((data: { success: boolean; sepay?: { qrUrl: string } }) => {
+          .then((data: { success: boolean; sepay?: { qrUrl: string }; order?: { orderNumber?: string } }) => {
             if (data?.success && data.sepay?.qrUrl) {
               setQrUrl(data.sepay.qrUrl);
+              if (data.order?.orderNumber) setOrderNumber(data.order.orderNumber);
+              setStatus('pending');
             }
           })
           .catch(() => {})
@@ -57,6 +59,27 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
   const handleSubmit = async (_values: FormValues) => {};
 
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'pending' | 'completed'>('idle');
+
+  // Poll order status when QR is shown
+  useEffect(() => {
+    if (!isModalOpen || !orderNumber || status !== 'pending') return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/orders/status?orderNumber=${orderNumber}`);
+        const data = await res.json() as { success: boolean; found?: boolean; status?: string };
+        if (!cancelled && data.success && data.found && data.status === 'COMPLETED') {
+          setStatus('completed');
+          message.success('Thanh toán thành công! Thông tin tài khoản sẽ được gửi qua email.');
+          setIsModalOpen(false);
+          clearInterval(interval);
+        }
+      } catch {}
+    }, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isModalOpen, orderNumber, status, message]);
 
   return (
     <>
@@ -118,6 +141,9 @@ export default function PurchaseButton({ accountId, price, onClick }: Props) {
             <div className="flex justify-center">
               <img src={qrUrl} alt="SePay QR" className="rounded-lg border" />
             </div>
+            {orderNumber && (
+              <div className="text-center text-sm text-gray-500 mt-2">Mã đơn: {orderNumber}</div>
+            )}
             <div className="mt-4">
               <Button onClick={() => { setQrUrl(null); setIsModalOpen(false); }} className="w-full">Đóng</Button>
             </div>
