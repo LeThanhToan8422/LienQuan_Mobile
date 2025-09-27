@@ -214,8 +214,8 @@ export default function OrderStatusModal({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <Text className="text-yellow-800 text-sm">
-              <strong>Lưu ý:</strong> Khi chuyển đơn hàng sang trạng thái "Hoàn thành", 
-              tài khoản sẽ được đánh dấu là "Đã bán" và thông tin đăng nhập sẽ được 
+              <strong>Lưu ý:</strong> Khi chuyển đơn hàng sang trạng thái &quot;Hoàn thành&quot;, 
+              tài khoản sẽ được đánh dấu là &quot;Đã bán&quot; và thông tin đăng nhập sẽ được 
               gửi cho khách hàng.
             </Text>
           </div>

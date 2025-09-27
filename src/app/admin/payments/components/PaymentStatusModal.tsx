@@ -252,8 +252,8 @@ export default function PaymentStatusModal({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <Text className="text-yellow-800 text-sm">
-              <strong>Lưu ý:</strong> Khi chuyển thanh toán sang trạng thái "Thành công", 
-              đơn hàng sẽ được cập nhật trạng thái thành "Đang xử lý".
+              <strong>Lưu ý:</strong> Khi chuyển thanh toán sang trạng thái &quot;Thành công&quot;, 
+              đơn hàng sẽ được cập nhật trạng thái thành &quot;Đang xử lý&quot;.
             </Text>
           </div>
 
