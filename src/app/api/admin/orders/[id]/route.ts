@@ -6,7 +6,7 @@ import { decryptAccountCredentials } from "@/lib/encryption";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Check authentication and admin role
@@ -18,7 +18,7 @@ export async function GET(
       );
     }
 
-    const orderId = params.id;
+    const orderId = context.params.id;
 
     // Fetch order with all related data
     const order = await prisma.order.findUnique({
@@ -107,7 +107,7 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Check authentication and admin role
@@ -119,7 +119,7 @@ export async function DELETE(
       );
     }
 
-    const orderId = params.id;
+    const orderId = context.params.id;
 
     // Check if order exists
     const existingOrder = await prisma.order.findUnique({
