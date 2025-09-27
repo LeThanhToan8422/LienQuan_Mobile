@@ -13,7 +13,7 @@ export default function Navbar() {
     {
       key: "profile",
       icon: <UserOutlined />,
-      label: "Thông tin cá nhân",
+      label: <Link href="/profile">Thông tin cá nhân</Link>,
     },
     ...(user?.role === "ADMIN" ? [
       {
