@@ -6,7 +6,7 @@ import { decryptAccountCredentials } from "@/lib/encryption";
 
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication and admin role
@@ -18,11 +18,11 @@ export async function GET(
       );
     }
 
-    const orderId = context.params.id;
+    const { id } = await context.params;
 
     // Fetch order with all related data
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: id },
       include: {
         user: {
           select: {
@@ -107,7 +107,7 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication and admin role
@@ -119,11 +119,11 @@ export async function DELETE(
       );
     }
 
-    const orderId = context.params.id;
+    const { id } = await context.params;
 
     // Check if order exists
     const existingOrder = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: id },
       include: { account: true }
     });
 
@@ -146,12 +146,12 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       // Delete payments first
       await tx.payment.deleteMany({
-        where: { orderId }
+        where: { orderId: id }
       });
 
       // Delete order
       await tx.order.delete({
-        where: { id: orderId }
+        where: { id: id }
       });
 
       // Update account status back to available
